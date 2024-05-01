@@ -1,0 +1,35 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+# GitHub recommends pinning actions to a commit SHA.
+# To get a newer version, you will need to update the SHA.
+# You can also reference a tag or branch, but the action may change without warning.
+
+name: build docker image and deploy to Jelastic staging environement
+
+on:
+  push:
+    branches: ['staging']
+
+jobs:
+  build-and-push-image:
+    uses: ./.github/workflows/build-and-push.yml
+    secrets:
+      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+      DOPPLER_TOKEN_RUN: ${{ secrets.DOPPLER_TOKEN_RUN }}
+      REPO_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_REGISTRY: ghcr.io
+      GITHUB_ACTOR: ${{ github.actor }}
+    with:
+      environment: staging
+      image_name: ${{ github.repository }}
+  redeploy-and-notify:
+    needs: build-and-push-image
+    uses: ./.github/workflows/redeploy-and-notify.yml
+    secrets:
+      JELASTIC_USERNAME: ${{ secrets.JELASTIC_USERNAME }}
+      JELASTIC_TOKEN: ${{ secrets.JELASTIC_TOKEN }}
+    with:
+      environment: staging

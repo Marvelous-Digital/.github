@@ -1,0 +1,16 @@
+{
+  "name": "Marvelous Organization Staging Workflow",
+  "description": "Marvelous Organization CI deploy workflow.",
+  "iconName": "server",
+  "categories": [
+      "Staging",
+      "Deploy",
+      "php",
+      "Laravel"
+  ],
+  "filePatterns": [
+      "package.json$",
+      "^Dockerfile",
+      ".*\\.md$"
+  ]
+}
