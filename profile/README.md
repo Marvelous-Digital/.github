@@ -1,5 +1,12 @@
-# Github workflows
-This repo hosts a collection of github workflows.
+#  Welcome to Marvelous Github
+Here are some reasources for new projects.
+
+## MRVLS Filament builder
+Creating a new monolithic Filament website?
+Use [this template](https://github.com/Marvelous-Digital/filament-page-builder) to create a new website with marvelous packages to speed up your work
+
+## Github workflows
+[This repo](https://github.com/Marvelous-Digital/.github) hosts a collection of github workflows.
 
 it currenty contains a workflow for a docker contained app deployed to jeastic environment
 
