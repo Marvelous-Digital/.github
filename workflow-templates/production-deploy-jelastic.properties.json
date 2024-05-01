@@ -6,11 +6,12 @@
       "Staging",
       "Deploy",
       "php",
-      "Laravel"
+      "Laravel",
+      "Jelastic"
   ],
   "filePatterns": [
       "package.json$",
-      "^Dockerfile",
+      "./docker/Dockerfile.prod",
       ".*\\.md$"
   ]
 }

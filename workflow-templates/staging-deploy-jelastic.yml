@@ -15,7 +15,7 @@ on:
 
 jobs:
   build-and-push-image:
-    uses: ./.github/workflows/build-and-push.yml
+    uses: Marvelous-Digital/.github/workflow-templates/jelastic/build-and-push-to-registry.yml@master
     secrets:
       DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       DOPPLER_TOKEN_RUN: ${{ secrets.DOPPLER_TOKEN_RUN }}
@@ -27,7 +27,7 @@ jobs:
       image_name: ${{ github.repository }}
   redeploy-and-notify:
     needs: build-and-push-image
-    uses: ./.github/workflows/redeploy-and-notify.yml
+    uses: Marvelous-Digital/.github/workflow-templates/jelastic/deploy-and-notify.yml@master
     secrets:
       JELASTIC_USERNAME: ${{ secrets.JELASTIC_USERNAME }}
       JELASTIC_TOKEN: ${{ secrets.JELASTIC_TOKEN }}
