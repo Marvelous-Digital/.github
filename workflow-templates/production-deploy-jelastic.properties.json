@@ -8,10 +8,5 @@
       "php",
       "Laravel",
       "Jelastic"
-  ],
-  "filePatterns": [
-      "package.json$",
-      "./docker/Dockerfile.prod",
-      ".*\\.md$"
   ]
 }
