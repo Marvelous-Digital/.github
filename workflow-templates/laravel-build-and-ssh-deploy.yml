@@ -2,6 +2,7 @@
 #
 # environment:
 # - create an environement for your branch MY_BRANCH in github in order to have multiple deploy scripts with different variables
+#
 # vars:
 # - WEBSITE_DIRECTORY (environement): home of the website on the server from the root (ex: sites/my-website.com/)
 # - CHAT_KEY (organisation): google space api key. (for Marvelous-Digital, this value is already set at an organisation level, but can be overriden at a repo level if needed)
