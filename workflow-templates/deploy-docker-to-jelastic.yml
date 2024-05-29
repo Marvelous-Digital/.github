@@ -11,7 +11,7 @@ name: build docker image and deploy to Jelastic staging environement
 
 on:
   push:
-    branches: ['staging']
+    branches: ['MY_BRANCH'] # TODO: change this to the branch that needs to be deployed (ex: staging or production)
 
 jobs:
   build-and-push-image:
@@ -23,7 +23,7 @@ jobs:
       GITHUB_REGISTRY: ghcr.io
       GITHUB_ACTOR: ${{ github.actor }}
     with:
-      environment: staging
+      environment: MY_ENVIRONEMENT # TODO: change this
       image_name: ${{ github.repository }}
   redeploy-and-notify:
     needs: build-and-push-image
@@ -32,4 +32,4 @@ jobs:
       JELASTIC_USERNAME: ${{ secrets.JELASTIC_USERNAME }}
       JELASTIC_TOKEN: ${{ secrets.JELASTIC_TOKEN }}
     with:
-      environment: staging
+      environment: MY_ENVIRONEMENT # TODO: change this

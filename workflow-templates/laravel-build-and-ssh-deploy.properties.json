@@ -1,5 +1,5 @@
 {
-  "name": "Marvelous Organization Staging Workflow",
+  "name": "Marvelous Organization Workflow",
   "description": "Marvelous Organization CI deploy workflow.",
   "iconName": "server",
   "categories": [
@@ -8,5 +8,10 @@
       "php",
       "Laravel",
       "Jelastic"
+  ],
+  "filePatterns": [
+      "package.json$",
+      "./docker/Dockerfile.prod",
+      ".*\\.md$"
   ]
 }

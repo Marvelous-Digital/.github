@@ -1,6 +1,6 @@
 {
-  "name": "Marvelous Organization Staging Workflow",
-  "description": "Marvelous Organization CI deploy workflow.",
+  "name": "Marvelous Organization Workflow",
+  "description": "Marvelous Organization Build and Deploy workflow to jelastic",
   "iconName": "server",
   "categories": [
       "Staging",
