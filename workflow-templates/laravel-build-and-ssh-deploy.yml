@@ -1,21 +1,21 @@
-# Requied variables in order for this workflow to work
+# Required variables in order for this workflow to work
 #
 # environment:
-# - create an environement for your branch MY_BRANCH in github in order to have multiple deploy scripts with different variables
+# - create an environment for your branch production in github in order to have multiple deploy scripts with different variables
 #
 # vars:
-# - WEBSITE_DIRECTORY (environement): home of the website on the server from the root (ex: sites/my-website.com/)
-# - CHAT_KEY (organisation): google space api key. (for Marvelous-Digital, this value is already set at an organisation level, but can be overriden at a repo level if needed)
+# - WEBSITE_DIRECTORY (environment): home of the website on the server from the root (ex: sites/my-website.com/)
+# - CHAT_KEY (organisation): google space api key. (for Marvelous-Digital, this value is already set at an organisation level, but can be overridden at a repo level if needed)
 #
 # secrets:
 # - MRVLS_PRIVATE_REPO_KEY (organisation): for Marvelous-Digital, this value is already on the orgs repo
-# - COMPOSER_AUTH_JSON (repositiory): the content of the auth.json
-# - SSH_HOST (repositiory): the host of the ssh server
-# - SSH_USER (repositiory): the user of the ssh connection
-# - SSH_PASSWORD (repositiory): the ssh users password
-# - SSH_PORT (repositiory): the port of the ssh connection
-#
-
+# - COMPOSER_AUTH_JSON (repository): the content of the auth.json
+# - SSH_HOST (repository): the host of the ssh server
+# - SSH_USER (repository): the user of the ssh connection
+# - SSH_PASSWORD (repository): the ssh users password
+# - SSH_PORT (repository): the port of the ssh connection
+  
+# Make sure you also have the run-MY_BRANCH.sh file on the server
 
 name: Deploy a laravel application on a standard host using ssh
 
@@ -39,40 +39,49 @@ jobs:
         with:
           submodules: "true"
           ssh-key: ${{ secrets.MRVLS_PRIVATE_REPO_KEY }}
+
+      # TODO: Remove if not needed
       - name: Add HTTP basic auth credentials
         run: echo '${{ secrets.COMPOSER_AUTH_JSON }}' > $GITHUB_WORKSPACE/auth.json
-      - name: Install dependencies
+
+      - name: Install composer
         uses: php-actions/composer@v6
         with:
           php_version: "8.2"
           version: "2.6.6"
           args: "--no-scripts"
-          php_extensions: intl exif imagick bcmath gd zip
-      - name: Install
+
+      - name: npm install
         run: npm install
-      - name: Build
+
+      - name: npm run build
         run: npm run build
-      - name: copy file via ssh
-        uses: appleboy/scp-action@v0.1.7
+
+      - name: Copy files via ssh
+        uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
-          source: "*, !**/.git*, !**/.git*/**, !vendor/**, !**/node_modules/**, !storage/framework/cache/**, !public/hot"
+          source: "app/*, bootstrap/*, config/*, database/*, public/*, resources/*, routes/*, storage/app/*, artisan, components.json, composer.json, composer.lock, package.json, phpunit.xml, run-production.sh, run-staging.sh, yarn.lock" # TODO: modify to your needs, adapt run scripts. Use inclusions only, exclusions aren't possible
           target: ${{ env.WEBSITE_DIRECTORY }}
-      - name: Composer install over SSH
+
+      - name: Composer install via ssh
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
-          script: "cd ${{ env.WEBSITE_DIRECTORY }} && sh run.sh ${{ env.WEBSITE_DIRECTORY }}" # TODO: change the run script if different
-      - name: Google Chat Notification
-        uses: Co-qn/google-chat-notification@releases/v1
+          script: "cd ${{ env.WEBSITE_DIRECTORY }} && bash run-MY_BRANCH.sh" # TODO: change the run script if different
+
+      - name: google chat notifications
+        uses: SimonScholz/google-chat-action@main
         with:
-          name: Build
-          url: "${{ vars.CHAT_KEY }}"
-          status: ${{ job.status }}
-        if: always()
+          title: WEBSITE NAME # TODO
+          subtitle: "production" # TODO
+          webhookUrl: "${{ vars.CHAT_KEY }}"
+          jobStatus: "${{ job.status }}"
+          imageUrl: https://example.com/web-app-manifest-512x512.png # TODO
+          imageType: SQUARE
