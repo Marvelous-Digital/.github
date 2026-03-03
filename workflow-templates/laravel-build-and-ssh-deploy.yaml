@@ -3,21 +3,30 @@
 
 # 1. Create an environment for each environment you want to deploy to (ex: staging, production)
 
-# 2. Add environment variable:
+# 2. Generate Key Pair (Local or Server):
+#     ssh-keygen -P "" -t ed25519 -C "github-action-deploy" -f ./deploy_key
+# Add Public Key to Server:
+#     ssh-copy-id -i ./deploy_key.pub -p [SSH_PORT] [SSH_USER]@[SSH_HOST]
+# Add Private Key to GitHub, copy the contents of './deploy_key' to a Repository secret named:
+#     SSH_PRIVATE_KEY
+# Delete:
+#     rm deploy_key*
+
+# 3. Add environment variable:
 # - WEBSITE_DIRECTORY: relative path to the website dir, CAREFUL NO FIRST SLASH (ex: sites/example.ch/ or sites/staging.example.ch/)
 
-# 3. Add Repository secrets:
+# 4. Add Repository secrets:
 # - ABSOLUTE_HOME_PATH: home path on the server (ex: /home/clients/2afdc46eadfd00c9075... To get it via ssh, go to the root and run "echo $(pwd)". No end slash!)
 # - COMPOSER_AUTH_JSON: the full content of the auth.json file for composer, used to authenticate to private repositories
 # - SSH_HOST
 # - SSH_USER
-# - SSH_PASSWORD
 # - SSH_PORT
+# - SSH_PRIVATE_KEY
 
-# 4. Add Environment secrets:
+# 5. Add Environment secrets:
 # - DOPPLER_TOKEN: Doppler token with access to the secrets of the environment (Doppler > Project > [env] > Access > Service tokens)
 
-# 5. Adapt the branch name + env values in the workflow
+# 6. Adapt the branch name + env values + environment name in the workflow
 
 name: Create and publish to infomaniak
 
@@ -36,85 +45,86 @@ env:
 jobs:
     build-and-deploy:
         runs-on: ubuntu-latest
+        environment: staging
         permissions:
             contents: read
             packages: write
 
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  submodules: "true"
-                  ssh-key: ${{ secrets.MRVLS_PRIVATE_REPO_KEY }}
+            -   name: Checkout repository
+                uses: actions/checkout@v4
+                with:
+                    submodules: "true"
+                    ssh-key: ${{ secrets.MRVLS_PRIVATE_REPO_KEY }}
 
-            - name: Install Doppler CLI
-              uses: dopplerhq/cli-action@v3
+            -   name: Install Doppler CLI
+                uses: dopplerhq/cli-action@v3
 
-            - name: Generate .env
-              run: doppler secrets download --no-file --format env > .env
-              env:
-                  DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+            -   name: Generate .env
+                run: doppler secrets download --no-file --format env > .env
+                env:
+                    DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
 
-            - name: Generate auth.json
-              run: echo '${{ secrets.COMPOSER_AUTH_JSON }}' > $GITHUB_WORKSPACE/auth.json
+            -   name: Generate auth.json
+                run: echo '${{ secrets.COMPOSER_AUTH_JSON }}' > $GITHUB_WORKSPACE/auth.json
 
-            - name: Setup PHP
-              uses: shivammathur/setup-php@v2
-              with:
-                  php-version: ${{ env.PHP_VERSION }}
-                  extensions: ${{ env.PHP_EXTENSIONS }}
-                  coverage: none
+            -   name: Install composer
+                uses: php-actions/composer@v6
+                with:
+                    php_version: ${{ env.PHP_VERSION }}
+                    version: "2.6.6"
+                    args: "--no-scripts"
+                    php_extensions: ${{ env.PHP_EXTENSIONS }}
 
-            - name: Install composer
-              uses: php-actions/composer@v6
-              with:
-                  php_version: ${{ env.PHP_VERSION }}
-                  version: "2.6.6"
-                  args: "--no-scripts"
-                  php_extensions: ${{ env.PHP_EXTENSIONS }}
+            -   name: Setup PHP
+                uses: shivammathur/setup-php@v2
+                with:
+                    php-version: ${{ env.PHP_VERSION }}
+                    extensions: ${{ env.PHP_EXTENSIONS }}
+                    coverage: none
 
-            - name: Install pnpm
-              uses: pnpm/action-setup@v4
+            -   name: Install pnpm
+                uses: pnpm/action-setup@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: ${{ env.NODE_VERSION }}
-                  cache: 'pnpm'
+            -   name: Setup Node.js
+                uses: actions/setup-node@v4
+                with:
+                    node-version: ${{ env.NODE_VERSION }}
+                    cache: 'pnpm'
 
-            - name: Install and Build Assets
-              run: |
-                  if [ -f "pnpm-lock.yaml" ]; then
-                    pnpm install && pnpm build
-                  else
-                    npm install && npm run build
-                  fi
+            -   name: Install and Build Assets
+                run: |
+                    if [ -f "pnpm-lock.yaml" ]; then
+                      pnpm install && pnpm build
+                    else
+                      npm install && npm run build
+                    fi
 
-            - name: Sync files with rsync over SSH
-              uses: easingthemes/ssh-deploy@v5.0.0
-              with:
-                  SSH_PRIVATE_KEY: ${{ secrets.MRVLS_PRIVATE_REPO_KEY }}
-                  REMOTE_HOST: ${{ secrets.SSH_HOST }}
-                  REMOTE_USER: ${{ secrets.SSH_USER }}
-                  TARGET: "${{ secrets.ABSOLUTE_HOME_PATH }}/${{ vars.WEBSITE_DIRECTORY }}"
-                  ARGS: "-rlzc --delete --no-perms --no-owner --no-group --chmod=D755,F644 --exclude=vendor/ --exclude=bootstrap/cache/ --exclude=storage/ --exclude=.git/ --exclude=node_modules/"
+            -   name: Sync files with rsync over SSH
+                uses: easingthemes/ssh-deploy@v5.0.0
+                with:
+                    SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+                    REMOTE_HOST: ${{ secrets.SSH_HOST }}
+                    REMOTE_USER: ${{ secrets.SSH_USER }}
+                    TARGET: "${{ secrets.ABSOLUTE_HOME_PATH }}/${{ vars.WEBSITE_DIRECTORY }}"
+                    ARGS: "-rlzc --delete --no-perms --no-owner --no-group --chmod=D755,F644 --exclude=vendor/ --exclude=bootstrap/cache/ --exclude=storage/ --exclude=.git/ --exclude=node_modules/"
 
-            - name: Run Deploy Script over SSH
-              uses: appleboy/ssh-action@v1.0.0
-              with:
-                  host: ${{ secrets.SSH_HOST }}
-                  username: ${{ secrets.SSH_USER }}
-                  password: ${{ secrets.SSH_PASSWORD }}
-                  port: ${{ secrets.SSH_PORT }}
-                  script: ${{ env.RUN_SSH_SCRIPT }}
+            -   name: Run Deploy Script over SSH
+                uses: appleboy/ssh-action@master
+                with:
+                    host: ${{ secrets.SSH_HOST }}
+                    username: ${{ secrets.SSH_USER }}
+                    key: ${{ secrets.SSH_PRIVATE_KEY }}
+                    port: ${{ secrets.SSH_PORT }}
+                    script: ${{ env.RUN_SSH_SCRIPT }}
 
-            - name: Google chat notifications
-              uses: SimonScholz/google-chat-action@main
-              if: always()
-              with:
-                  title: "${{ env.CHAT_TITLE }}"
-                  subtitle: "${{ env.CHAT_SUBTITLE }}"
-                  webhookUrl: "${{ vars.CHAT_KEY }}"
-                  jobStatus: "${{ job.status }}"
-                  imageUrl: "${{ env.CHAT_ICON_URL }}"
-                  imageType: SQUARE
+            -   name: Google chat notifications
+                uses: SimonScholz/google-chat-action@main
+                if: always()
+                with:
+                    title: "${{ env.CHAT_TITLE }}"
+                    subtitle: "${{ env.CHAT_SUBTITLE }}"
+                    webhookUrl: "${{ vars.CHAT_KEY }}"
+                    jobStatus: "${{ job.status }}"
+                    imageUrl: "${{ env.CHAT_ICON_URL }}"
+                    imageType: SQUARE
