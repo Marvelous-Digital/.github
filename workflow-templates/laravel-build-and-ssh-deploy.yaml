@@ -27,6 +27,7 @@ env:
     RUN_SSH_SCRIPT: "cd ${{ vars.WEBSITE_DIRECTORY }} && sh deploy.sh"
     CHAT_TITLE: "Marvelous Digital - BACKEND"
     CHAT_SUBTITLE : "staging"
+    CHAT_ICON_URL: "https://marvelous.digital/favicon-96x96.png"
 
 jobs:
     build-and-push-image:
