@@ -13,7 +13,7 @@ $PHP_PATH artisan down || true
 echo "Running Composer Install..."
 composer install --no-interaction --prefer-dist
 
-$PHP_PATH artisan artisan optimize:clear
+$PHP_PATH artisan optimize:clear
 $PHP_PATH artisan migrate --force
 $PHP_PATH artisan storage:link
 $PHP_PATH artisan config:clear
