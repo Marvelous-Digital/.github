@@ -3,7 +3,8 @@
 # 1. Create an environment for each environment you want to deploy to (ex: staging, production)
 
 # 2. Add environment variable:
-# - WEBSITE_DIRECTORY: home of the website on the server from the root (ex: sites/example.ch/ or sites/staging.example.ch/)
+# - ABSOLUTE_HOME_PATH: home path on the server (ex: /home/clients/2afdc46eadfd00c9075... To get it via ssh, go to the root and run "echo $(pwd)")
+# - WEBSITE_DIRECTORY: relative path to the website dir, CAREFUL NO FIRST SLASH (ex: sites/example.ch/ or sites/staging.example.ch/)
 
 # 3. Add Repository secrets:
 # - COMPOSER_AUTH_JSON: the full content of the auth.json file for composer, used to authenticate to private repositories
@@ -12,7 +13,10 @@
 # - SSH_PASSWORD
 # - SSH_PORT
 
-# 4. Adapt the branch name + env values in the workflow
+# 4. Add Environment secrets:
+# - DOPPLER_TOKEN: Doppler token with access to the secrets of the environment (Doppler > Project > [env] > Access > Service tokens)
+
+# 5. Adapt the branch name + env values in the workflow
 
 name: Create and publish to infomaniak
 
@@ -42,6 +46,14 @@ jobs:
               with:
                   submodules: "true"
                   ssh-key: ${{ secrets.MRVLS_PRIVATE_REPO_KEY }}
+
+            - name: Install Doppler CLI
+              uses: dopplerhq/cli-action@v3
+
+            - name: Generate Staging .env
+              run: doppler secrets download --no-file --format env > .env
+              env:
+                DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
 
             - name: Generate auth.json
               run: echo '${{ secrets.COMPOSER_AUTH_JSON }}' > $GITHUB_WORKSPACE/auth.json
@@ -78,15 +90,14 @@ jobs:
                       npm install && npm run build
                     fi
 
-            - name: Copy file via ssh
-              uses: appleboy/scp-action@v1
+            - name: Sync files with rsync over SSH
+              uses: easingthemes/ssh-deploy@v5.0.0
               with:
-                  host: ${{ secrets.SSH_HOST }}
-                  username: ${{ secrets.FTP_USER }}
-                  password: ${{ secrets.FTP_PASSWORD }}
-                  port: ${{ secrets.SSH_PORT }}
-                  source: "*, !**/.git*, !**/.git*/**, !vendor/**, !**/node_modules/**, !node_modules/**, !storage/framework/cache/**, !public/hot"
-                  target: ${{ vars.WEBSITE_DIRECTORY }}
+                  SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+                  REMOTE_HOST: ${{ secrets.SSH_HOST }}
+                  REMOTE_USER: ${{ secrets.SSH_USER }}
+                  TARGET: "${{ secrets.ABSOLUTE_HOME_PATH }}/${{ vars.WEBSITE_DIRECTORY }}"
+                  ARGS: "-rlzc --delete --no-perms --no-owner --no-group --chmod=D755,F644 --exclude=vendor/ --exclude=bootstrap/cache/ --exclude=storage/ --exclude=.git/ --exclude=node_modules/"
 
             - name: Composer install over SSH
               uses: appleboy/ssh-action@v1.0.0
