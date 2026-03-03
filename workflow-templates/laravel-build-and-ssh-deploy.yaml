@@ -1,0 +1,107 @@
+# GitHub repository template for building a Laravel application and deploying it to an Infomaniak server via SSH.
+
+# 1. Create an environment for each environment you want to deploy to (ex: staging, production)
+
+# 2. Add environment variable:
+# - WEBSITE_DIRECTORY: home of the website on the server from the root (ex: sites/example.ch/ or sites/staging.example.ch/)
+
+# 3. Add Repository secrets:
+# - COMPOSER_AUTH_JSON: the full content of the auth.json file for composer, used to authenticate to private repositories
+# - SSH_HOST
+# - SSH_USER
+# - SSH_PASSWORD
+# - SSH_PORT
+
+# 4. Adapt the branch name + env values in the workflow
+
+name: Create and publish to infomaniak
+
+on:
+    push:
+        branches: ["TODO_BRANCH_NAME"]
+
+env:
+    PHP_VERSION: "8.4"
+    PHP_EXTENSIONS: "intl exif imagick bcmath gd zip"
+    NODE_VERSION: "24"
+    RUN_SSH_SCRIPT: "cd ${{ vars.WEBSITE_DIRECTORY }} && sh deploy.sh"
+    CHAT_TITLE: "Marvelous Digital - BACKEND"
+    CHAT_SUBTITLE : "staging"
+
+jobs:
+    build-and-push-image:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  submodules: "true"
+                  ssh-key: ${{ secrets.MRVLS_PRIVATE_REPO_KEY }}
+
+            - name: Generate auth.json
+              run: echo '${{ secrets.COMPOSER_AUTH_JSON }}' > $GITHUB_WORKSPACE/auth.json
+
+            - name: Install composer
+              uses: php-actions/composer@v6
+              with:
+                  php_version: ${{ env.PHP_VERSION }}
+                  version: "2.6.6"
+                  args: "--no-scripts"
+                  php_extensions: ${{ env.PHP_EXTENSIONS }}
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ env.PHP_VERSION }}
+                  extensions: ${{ env.PHP_EXTENSIONS }}
+                  coverage: none
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: 'pnpm'
+
+            -   name: Install and Build
+                run: |
+                    if [ -f "pnpm-lock.yaml" ]; then
+                      pnpm install && pnpm build
+                    else
+                      npm install && npm run build
+                    fi
+
+            - name: Copy file via ssh
+              uses: appleboy/scp-action@v1
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.FTP_USER }}
+                  password: ${{ secrets.FTP_PASSWORD }}
+                  port: ${{ secrets.SSH_PORT }}
+                  source: "*, !**/.git*, !**/.git*/**, !vendor/**, !**/node_modules/**, !node_modules/**, !storage/framework/cache/**, !public/hot"
+                  target: ${{ vars.WEBSITE_DIRECTORY }}
+
+            - name: Composer install over SSH
+              uses: appleboy/ssh-action@v1.0.0
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.FTP_USER }}
+                  password: ${{ secrets.FTP_PASSWORD }}
+                  port: ${{ secrets.SSH_PORT }}
+                  script: ${{ env.RUN_SSH_SCRIPT }}
+
+            - name: Google chat notifications
+              uses: SimonScholz/google-chat-action@main
+              with:
+                  title: "${{ env.CHAT_TITLE }}"
+                  subtitle: "${{ env.CHAT_SUBTITLE }}"
+                  webhookUrl: "${{ vars.CHAT_KEY }}"
+                  jobStatus: "${{ job.status }}"
+                  imageUrl: "${{ env.CHAT_ICON_URL }}"
+                  imageType: SQUARE
