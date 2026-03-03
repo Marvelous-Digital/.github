@@ -58,6 +58,21 @@ jobs:
             - name: Generate auth.json
               run: echo '${{ secrets.COMPOSER_AUTH_JSON }}' > auth.json
 
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ env.PHP_VERSION }}
+                  extensions: ${{ env.PHP_EXTENSIONS }}
+                  coverage: none
+
+            - name: Install composer
+              uses: php-actions/composer@v6
+              with:
+                  php_version: ${{ env.PHP_VERSION }}
+                  version: "2.6.6"
+                  args: "--no-scripts"
+                  php_extensions: ${{ env.PHP_EXTENSIONS }}
+
             - name: Install pnpm
               uses: pnpm/action-setup@v4
 
